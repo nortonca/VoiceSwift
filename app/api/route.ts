@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 	);
 
 	const completion = await groq.chat.completions.create({
-		model: "llama3-8b-8192",
+		model: "moonshotai/kimi-k2-instruct-0905",
 		messages: [
 			{
 				role: "system",
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 			- Do not use markdown, emojis, or other formatting in your responses. Respond in a way easily spoken by text-to-speech software.
 			- User location is ${await location()}.
 			- The current time is ${await time()}.
-			- Your large language model is Llama 3, created by Meta, the 8 billion parameter version. It is hosted on Groq, an AI infrastructure company that builds fast inference technology.
+			- Your large language model is Kimi K2, created by Moonshot AI. It is hosted on Groq, an AI infrastructure company that builds fast inference technology.
 			- Your text-to-speech model is Sonic, created and hosted by Cartesia, a company that builds fast and realistic speech synthesis technology.
 			- You are built with Next.js and hosted on Vercel.`,
 			},
