@@ -1,0 +1,9 @@
+# PNPM configuration
+# Use strict peer dependencies to avoid issues
+strict-peer-dependencies=false
+
+# Enable auto-install-peers to automatically install peer dependencies
+auto-install-peers=true
+
+# Use the latest Node.js linker for better performance
+node-linker=isolated

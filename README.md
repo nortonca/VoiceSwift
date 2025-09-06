@@ -13,6 +13,16 @@ Thank you to the teams at Groq and Cartesia for providing access to their APIs f
 
 ## Developing
 
+This project uses **PNPM** as its package manager. Make sure you have PNPM installed:
+
+```bash
+npm install -g pnpm
+# or
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+```
+
+Then:
+
 -   Clone the repository
 -   Copy `.env.example` to `.env.local` and fill in the environment variables.
 -   Run `pnpm install` to install dependencies.
