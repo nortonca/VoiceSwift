@@ -4,6 +4,8 @@ import clsx from "clsx";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
+import Navbar from "@/components/Navbar";
+import ConvexClientProvider from "./ConvexClientProvider";
 
 export const metadata: Metadata = {
 	title: "Swift",
@@ -32,12 +34,15 @@ export default function RootLayout({
 				className={clsx(
 					geist.variable,
 					geistMono.variable,
-					"py-8 px-6 lg:p-10 dark:text-white bg-white dark:bg-black min-h-dvh flex flex-col justify-between antialiased font-sans select-none"
+					"py-8 px-6 lg:p-10 dark:text-white bg-white dark:bg-black min-h-dvh flex flex-col antialiased font-sans select-none"
 				)}
 			>
-				<main className="flex flex-col items-center justify-center grow">
-					{children}
-				</main>
+				<Navbar />
+				<ConvexClientProvider>
+					<main className="flex flex-col items-center justify-center grow">
+						{children}
+					</main>
+				</ConvexClientProvider>
 
 				<Toaster richColors theme="system" />
 				<Analytics />

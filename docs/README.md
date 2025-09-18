@@ -59,3 +59,27 @@ This documentation covers all aspects of the VoiceSwift application, including s
 ---
 
 For questions or contributions, please refer to the specific documentation files or check the main project README.
+
+# VoiceSwift UI Guidelines
+
+A minimal, consistent UI built with Tailwind tokens and a small UI kit.
+
+## Tokens
+- Radii: `--vs-radius-sm`, `--vs-radius`, `--vs-radius-lg`
+- Spacing: `--vs-space-1..8`
+- Colors: `--vs-color-bg`, `--vs-color-fg`, `--vs-color-muted`, `--vs-color-border`, `--vs-color-elev`, `--vs-color-ring`, brand `--vs-brand`
+
+## Components
+- `Button` variants: primary, secondary, ghost; sizes: sm, md
+- `Input` with start/end icons, focus ring
+- `Card` surface via `vs-card`
+- `Section` for titled panels
+- `Badge` tone: ok, warn, info
+
+## Patterns
+- Page container: `max-w-5xl mx-auto px-4 py-6`
+- Tabs: rounded-full group, `bg-white/10` active, `text-white/70` idle
+- Focus: `:focus-visible { box-shadow: var(--vs-color-ring) }`
+- Contrast: prefer AA; avoid very low opacity text
+
+Adopt these components/styles across pages for consistency and minimalism.

@@ -42,6 +42,10 @@ Create a `.env.local` file in the root directory with the following variables:
 # Required API Keys
 GROQ_API_KEY=your_groq_api_key_here
 CARTESIA_API_KEY=your_cartesia_api_key_here
+EXA_API_KEY=your_exa_api_key_here
+
+# Client Config
+NEXT_PUBLIC_CONVEX_URL=your_convex_url
 
 # Optional: Vercel Analytics
 VERCEL_ANALYTICS_ID=your_vercel_analytics_id
