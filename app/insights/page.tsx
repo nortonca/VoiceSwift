@@ -45,7 +45,7 @@ export default function InsightsPage() {
             <BarChart3 className="h-5 w-5 text-emerald-400" />
             <h3 className="text-lg font-semibold text-white/90">Analytics Dashboard</h3>
           </div>
-          <p className="text-sm text-white/60">Monitor your agent's performance and key business metrics.</p>
+          <p className="text-sm text-white/60">Monitor your agent&apos;s performance and key business metrics.</p>
         </div>
 
         <div className="flex items-center justify-between gap-3">

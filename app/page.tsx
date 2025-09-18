@@ -12,9 +12,28 @@ import { api } from "../convex/_generated/api";
 import { Bot } from "lucide-react";
 
 type Message = {
-	role: "user" | "assistant";
+	role: "user" | "assistant" | "tool";
 	content: string;
 	latency?: number;
+	meta?: {
+		toolName?: string;
+		callId?: string;
+	};
+};
+
+type StageName = "transcription" | "tools" | "generation" | "tts";
+type StageStatus = "pending" | "running" | "success" | "error";
+type StageState = {
+	status: StageStatus;
+	duration?: number;
+};
+
+const STAGES: StageName[] = ["transcription", "tools", "generation", "tts"];
+const INITIAL_STAGE_STATES: Record<StageName, StageState> = {
+	transcription: { status: "pending" },
+	tools: { status: "pending" },
+	generation: { status: "pending" },
+	tts: { status: "pending" },
 };
 
 export default function Home() {
@@ -42,7 +61,7 @@ export default function Home() {
 	}, [agents]);
 
 	const handleSpeechEnd = (audio: Float32Array) => {
-		player.stop();
+		terminateStreaming({ reset: false });
 		const wav = utils.encodeWAV(audio);
 		const blob = new Blob([wav], { type: "audio/wav" });
 		void submit(blob);
@@ -59,6 +78,8 @@ export default function Home() {
 	});
 
 	const [messages, setMessages] = useState<Message[]>([]);
+	const [stages, setStages] = useState<Record<StageName, StageState>>(INITIAL_STAGE_STATES);
+	const streamingAbortRef = useRef<AbortController | null>(null);
 	
 	// Helper to ensure conversation exists
 	const ensureConversation = useCallback(
@@ -71,6 +92,22 @@ export default function Home() {
 			return id;
 		},
 		[createConversation, currentConversationId]
+	);
+
+	// Stream termination helper
+	const terminateStreaming = useCallback(
+		(options: { reset?: boolean } = {}) => {
+			if (streamingAbortRef.current) {
+				streamingAbortRef.current.abort();
+				streamingAbortRef.current = null;
+			}
+			player.stop();
+			setIsPending(false);
+			if (options.reset !== false) {
+				setStages({ ...INITIAL_STAGE_STATES });
+			}
+		},
+		[player]
 	);
 	
 	const submit = useCallback(
@@ -102,16 +139,28 @@ export default function Home() {
 				formData.append("agent", JSON.stringify(currentAgent));
 			}
 			for (const message of messages) {
-				formData.append("message", JSON.stringify(message));
+				if (message.role === "tool") continue;
+				formData.append(
+					"message",
+					JSON.stringify({ role: message.role, content: message.content }),
+				);
 			}
 
-			player.stop();
+			// Terminate any existing stream
+			terminateStreaming({ reset: false });
+
+			// Create new abort controller
+			const abortController = new AbortController();
+			streamingAbortRef.current = abortController;
+
+			setStages({ ...INITIAL_STAGE_STATES });
 			setIsPending(true);
 
 			try {
 				const response = await fetch("/api", {
 					method: "POST",
 					body: formData,
+					signal: abortController.signal,
 				});
 
 				if (!response.ok || !response.body) {
@@ -141,6 +190,43 @@ export default function Home() {
 							try {
 								const event = JSON.parse(line) as any;
 								switch (event.type) {
+									case "stage": {
+										if (STAGES.includes(event.stage)) {
+											setStages((prev) => ({
+												...prev,
+												[event.stage as StageName]: {
+													...prev[event.stage as StageName],
+													status: event.status as StageStatus,
+												},
+											}));
+										}
+										break;
+									}
+									case "metrics": {
+										if (STAGES.includes(event.stage)) {
+											setStages((prev) => ({
+												...prev,
+												[event.stage as StageName]: {
+													...prev[event.stage as StageName],
+													duration: typeof event.duration === "number" ? Math.round(event.duration) : prev[event.stage as StageName].duration,
+												},
+											}));
+										}
+										break;
+									}
+									case "tool": {
+										const summary = formatToolEvent(event);
+										workingMessages.push({
+											role: "tool",
+											content: summary,
+											meta: {
+												toolName: event.name,
+												callId: event.callId,
+											},
+										});
+										updateMessages();
+										break;
+									}
 									case "transcript": {
 										if (typeof event.text === "string") {
 											transcriptValue = event.text;
@@ -256,14 +342,20 @@ export default function Home() {
 					console.error("Failed to save to Convex:", error);
 				}
 			} catch (error) {
+				// Don't show error for user-initiated aborts
+				if (error instanceof Error && error.name === "AbortError") {
+					return;
+				}
 				const message = error instanceof Error ? error.message : "Unexpected error";
 				toast.error(message);
 				setMessages(messages);
+				terminateStreaming({ reset: false });
 			} finally {
+				streamingAbortRef.current = null;
 				setIsPending(false);
 			}
 		},
-		[addMessage, currentAgent, ensureConversation, isPending, messages, player]
+		[addMessage, currentAgent, ensureConversation, isPending, messages, player, terminateStreaming]
 	);
 
 	function handleFormSubmit(e: React.FormEvent) {
@@ -272,6 +364,8 @@ export default function Home() {
 			void submit(input);
 		}
 	}
+
+	const latestVisibleMessage = [...messages].reverse().find((m) => m.role !== "tool");
 
 	return (
 		<>
@@ -309,6 +403,28 @@ export default function Home() {
 				) : null}
 			</div>
 
+			<div className="w-full max-w-3xl mb-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+				{STAGES.map((stage) => {
+					const state = stages[stage];
+					return (
+						<div
+							key={stage}
+							className="flex flex-col rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-white/70"
+						>
+							<span className="uppercase tracking-wide text-[10px] text-white/40">
+								{formatStageLabel(stage)}
+							</span>
+							<span className="font-medium text-white/80">
+								{formatStageStatus(state.status)}
+							</span>
+							{typeof state.duration === "number" && (
+								<span className="text-[11px] text-white/50">{state.duration} ms</span>
+							)}
+						</div>
+					);
+				})}
+			</div>
+
 			<form
 				className="flex items-center gap-3 w-full max-w-3xl"
 				onSubmit={handleFormSubmit}
@@ -343,13 +459,15 @@ export default function Home() {
 			{/* Voice Controls */}
 			{currentAgent && (
 				<div className="w-full max-w-3xl">
-					<VoiceControls 
+					<VoiceControls
 						onSpeechEnd={handleSpeechEnd}
 						onStopped={() => {
+							terminateStreaming();
 							setShowFeedback(true);
 							setCurrentConversationId(null); // Start fresh conversation next time
 						}}
 						onClearMessages={() => {
+							terminateStreaming();
 							setMessages([]);
 							setCurrentConversationId(null);
 						}}
@@ -358,12 +476,12 @@ export default function Home() {
 			)}
 
 			<div className="text-neutral-400 dark:text-neutral-600 pt-4 text-center max-w-xl text-balance min-h-28 space-y-4">
-				{messages.length > 0 && (
+				{latestVisibleMessage && (
 					<p>
-						{messages.at(-1)?.content}
+						{latestVisibleMessage.content}
 						<span className="text-xs font-mono text-neutral-300 dark:text-neutral-700">
 							{" "}
-							({messages.at(-1)?.latency}ms)
+							({latestVisibleMessage.latency}ms)
 						</span>
 					</p>
 				)}
@@ -397,6 +515,58 @@ async function safeReadError(response: Response) {
 		return await response.text();
 	} catch {
 		return null;
+	}
+}
+
+function formatToolEvent(event: any) {
+	const name = typeof event?.name === "string" ? event.name : "tool";
+	const input = event?.input ? truncateJson(event.input) : "{}";
+	const output = event?.output ? truncateJson(event.output) : "{}";
+	const parts = [`${name} call`];
+	if (event?.source) {
+		parts.push(`source: ${event.source}`);
+	}
+	parts.push(`input: ${input}`);
+	parts.push(`output: ${output}`);
+	return parts.join(" | ");
+}
+
+function truncateJson(value: unknown, max = 160) {
+	try {
+		const text = typeof value === "string" ? value : JSON.stringify(value);
+		return text.length > max ? `${text.slice(0, max)}…` : text;
+	} catch {
+		return String(value);
+	}
+}
+
+function formatStageLabel(stage: StageName) {
+	switch (stage) {
+		case "transcription":
+			return "Transcription";
+		case "tools":
+			return "Tools";
+		case "generation":
+			return "Generation";
+		case "tts":
+			return "Speech";
+		default:
+			return stage;
+	}
+}
+
+function formatStageStatus(status: StageStatus) {
+	switch (status) {
+		case "pending":
+			return "Pending";
+		case "running":
+			return "Running";
+		case "success":
+			return "Done";
+		case "error":
+			return "Error";
+		default:
+			return status;
 	}
 }
 

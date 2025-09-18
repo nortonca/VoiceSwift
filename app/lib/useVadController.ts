@@ -24,14 +24,6 @@ export function useVadController(options: VadControllerOptions = {}) {
   const vad = useMicVAD({
     startOnLoad: false,
     onSpeechEnd: options.onSpeechEnd,
-    onPermissionDenied: () => {
-      setMicGranted(false);
-      options.onPermissionDenied?.();
-    },
-    onPermissionGranted: () => {
-      setMicGranted(true);
-      options.onPermissionGranted?.();
-    },
     positiveSpeechThreshold: 0.5,
     negativeSpeechThreshold: 0.35,
     frameSamples: FRAME_SAMPLES,

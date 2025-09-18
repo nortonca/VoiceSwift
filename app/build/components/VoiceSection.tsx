@@ -79,7 +79,7 @@ export function VoiceSection({
           <h3 className="text-lg font-semibold text-white/90">Voice Model</h3>
         </div>
         <p className="text-sm text-white/60">
-          Choose the voice personality that best fits your agent's character and communication style.
+          Choose the voice personality that best fits your agent&apos;s character and communication style.
         </p>
       </div>
 

@@ -35,7 +35,7 @@ export function GeneralSection({
           <User className="h-5 w-5 text-emerald-400" />
           <h3 className="text-lg font-semibold text-white/90">General</h3>
         </div>
-        <p className="text-sm text-white/60">Configure your agent's identity and behavior.</p>
+        <p className="text-sm text-white/60">Configure your agent&apos;s identity and behavior.</p>
       </div>
       <div className="space-y-4">
         <h4 className="text-sm font-medium text-white/80">Basic Information</h4>
