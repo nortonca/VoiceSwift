@@ -512,7 +512,11 @@ async function createCartesiaStream({ voiceId }: { voiceId: string }): Promise<C
   url.searchParams.set("cartesia_version", "2025-04-16");
 
   const contextId = randomUUID();
-  const ws = new WebSocket(url.toString());
+  const ws = new WebSocket(url.toString(), {
+    // Add WebSocket options for better stability
+    perMessageDeflate: false,
+    skipUTF8Validation: false,
+  });
 
   await new Promise<void>((resolve, reject) => {
     ws.once("open", () => resolve());
@@ -546,21 +550,30 @@ async function createCartesiaStream({ voiceId }: { voiceId: string }): Promise<C
   return {
     async sendSegment(segment, { continueStream }) {
       if (!segment && continueStream) return;
-      ws.send(
-        JSON.stringify({
-          model_id: "sonic-turbo",
-          transcript: segment,
-          voice: { mode: "id", id: voiceId },
-          language: "en",
-          context_id: contextId,
-          continue: continueStream,
-          output_format: {
-            container: "raw",
-            encoding: "pcm_f32le",
-            sample_rate: 24000,
-          },
-        })
-      );
+      try {
+        if (ws.readyState !== WebSocket.OPEN) {
+          console.warn("WebSocket not open, skipping segment");
+          return;
+        }
+        ws.send(
+          JSON.stringify({
+            model_id: "sonic-turbo",
+            transcript: segment,
+            voice: { mode: "id", id: voiceId },
+            language: "en",
+            context_id: contextId,
+            continue: continueStream,
+            output_format: {
+              container: "raw",
+              encoding: "pcm_f32le",
+              sample_rate: 24000,
+            },
+          })
+        );
+      } catch (error) {
+        console.error("Failed to send WebSocket message:", error);
+        // Don't throw to avoid breaking the stream
+      }
     },
     onChunk(handler) {
       chunkHandler = handler;

@@ -44,9 +44,10 @@ export default defineSchema({
     .index("by_createdAt", ["createdAt"]),
   messages: defineTable({
     conversationId: v.id("conversations"),
-    from: v.union(v.literal("user"), v.literal("agent")),
+    from: v.union(v.literal("user"), v.literal("agent"), v.literal("tool")),
     text: v.string(),
     ts: v.number(),
+    metadata: v.optional(v.record(v.string(), v.any())),
   })
     .index("by_conversation_ts", ["conversationId", "ts"]),
 });
